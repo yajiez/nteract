@@ -168,6 +168,10 @@ code, kbd, samp,
   font-size: 10px !important;
 }
 
+.nteract-outputs {
+  font-size: 10px;
+}
+
 .markdown-body {
   font-family: "Iowan Old Style", "Kaiti SC", -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol" !important;
   line-height: 1.66 !important;
