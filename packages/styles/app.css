@@ -11,8 +11,9 @@ html {
 }
 
 body {
-  font-family: "Source Sans Pro";
-  font-size: 16px;
+  font-family: "Iowan Old Style", "Kaiti SC", serif;
+  font-size: 14px;
+  line-height: 1.66;
   background-color: var(--theme-app-bg);
   color: var(--theme-app-fg);
   margin: 0;
