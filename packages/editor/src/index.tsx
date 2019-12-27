@@ -132,7 +132,7 @@ export default class CodeMirrorEditor extends React.PureComponent<
       "Cmd-/": "toggleComment",
       "Ctrl-.": this.tips,
       "Ctrl-/": "toggleComment",
-      "Ctrl-Space": (editor: Editor) => {
+      "Ctrl-Tab": (editor: Editor) => {
         this.debounceNextCompletionRequest = false;
         return editor.execCommand("autocomplete");
       },
