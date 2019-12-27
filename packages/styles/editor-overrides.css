@@ -168,6 +168,28 @@ code, kbd, samp,
   font-size: 10px !important;
 }
 
+.CodeMirror-hints,
+.CodeMirror-hint,
+.CodeMirror-hints pre,
+.CodeMirror-hint pre,
+.CodeMirror-hints pre code,
+.CodeMirror-hints code,
+.CodeMirror-hint pre code,
+.CodeMirror-hint code {
+  font-size: 11px;
+}
+
+.CodeMirror-hint-active,
+.CodeMirror-hint-active pre,
+.CodeMirror-hint-active pre code,
+.CodeMirror-hint-active code{
+  font-size: 11px;
+}
+
+.jdrqhD {
+  height: 23px;
+}
+
 .nteract-outputs {
   font-size: 10px;
 }
