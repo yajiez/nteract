@@ -156,7 +156,7 @@ code, kbd, samp,
 }
 
 .djnZkY code {
-  font-size: 11px !important;
+  font-size: 10px;
 }
 
 .eCOEkH ul li {
@@ -165,7 +165,7 @@ code, kbd, samp,
 
 .cVasWE {
   font-family: Monaco, monospace !important;
-  font-size: 10px !important;
+  font-size: 10px;
 }
 
 .CodeMirror-hints,
@@ -176,22 +176,36 @@ code, kbd, samp,
 .CodeMirror-hints code,
 .CodeMirror-hint pre code,
 .CodeMirror-hint code {
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .CodeMirror-hint-active,
 .CodeMirror-hint-active pre,
 .CodeMirror-hint-active pre code,
 .CodeMirror-hint-active code{
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .jdrqhD {
   height: 23px;
 }
 
-.nteract-outputs {
-  font-size: 10px;
+.nteract-outputs pre,
+.nteract-outputs pre span,
+.nteract-outputs code,
+.nteract-outputs code span,
+.nteract-outputs pre code,
+.nteract-outputs pre code span {
+  font-size: 10px !important;
+}
+
+.markdown-body code,
+.markdown-body pre,
+.markdown-body pre code,
+.markdown-body code span,
+.markdown-body pre span,
+.markdown-body pre code span {
+  font-size: 0.85em !important;
 }
 
 .markdown-body {
