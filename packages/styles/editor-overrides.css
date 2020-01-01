@@ -142,6 +142,11 @@ li.CodeMirror-hint-active {
   border-bottom: none;
 }
 
+body {
+	font-size: 11px;
+	line-height: 1.88;
+}
+
 p {
   margin-top: 6px;
   font-size: 14px;
