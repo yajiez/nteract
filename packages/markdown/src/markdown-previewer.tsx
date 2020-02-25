@@ -1,13 +1,13 @@
 /* eslint jsx-a11y/no-static-element-interactions: 0 */
 /* eslint jsx-a11y/no-noninteractive-tabindex: 0 */
 
-import Markdown from "./markdown-render";
 import {
   Input,
   Outputs,
   PromptBuffer
 } from "@nteract/presentational-components";
 import React from "react";
+import Markdown from "./markdown-render";
 
 interface Props {
   source: string;
@@ -26,15 +26,6 @@ interface State {
 
 const noop = () => {};
 
-// TODO: Consider whether this component is really something like two components:
-//
-//       * a behavioral component that tracks focus (possibly already covered elsewhere)
-//       * the actual markdown previewer
-//
-//       Since I'm really unsure and don't want to write a silly abstraction that
-//       only I (@rgbkrk) understand, I'll wait for others to reflect on this
-//       within the code base (or leave it alone, which is totally cool too). :)
-
 export class MarkdownPreviewer extends React.Component<Props, State> {
   static defaultProps = {
     cellFocused: false,
@@ -46,12 +37,18 @@ export class MarkdownPreviewer extends React.Component<Props, State> {
     source: ""
   };
 
+  static getDerivedStateFromProps(props: Props, state: State): State {
+    return {
+      view: !props.editorFocused
+    };
+  }
+
   rendered!: HTMLDivElement | null;
 
   constructor(props: Props) {
     super(props);
     this.state = {
-      view: true
+      view: !props.editorFocused
     };
     this.openEditor = this.openEditor.bind(this);
     this.editorKeyDown = this.editorKeyDown.bind(this);
@@ -59,14 +56,15 @@ export class MarkdownPreviewer extends React.Component<Props, State> {
     this.closeEditor = this.closeEditor.bind(this);
   }
 
-  componentDidMount(): void {
-    this.updateFocus();
+  shouldComponentUpdate(nextProps: Props): boolean {
+    return (
+      this.props.editorFocused !== nextProps.editorFocused ||
+      this.props.cellFocused !== nextProps.cellFocused
+    );
   }
 
-  componentWillReceiveProps(nextProps: Props): void {
-    this.setState({
-      view: !nextProps.editorFocused
-    });
+  componentDidMount(): void {
+    this.updateFocus();
   }
 
   componentDidUpdate(): void {

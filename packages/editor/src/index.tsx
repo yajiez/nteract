@@ -10,7 +10,6 @@ import CodeMirror, {
 
 import { FullEditorConfiguration, isConfigurable } from "./configurable";
 
-import debounce from "lodash.debounce";
 import * as React from "react";
 import ReactDOM from "react-dom";
 import { empty, merge, Observable, Subject, Subscription } from "rxjs";
@@ -56,9 +55,11 @@ export type CodeMirrorEditorProps = {
   // _Our_ theme, not the codemirror one we use
   theme: string;
   channels?: Channels | null;
-  // TODO: We only check if this is idle, so the completion provider should only
-  //       care about this when kernelStatus === idle _and_ we're the active cell
-  //       could instead call it `canTriggerCompletion` and reduce our current re-renders
+  /**
+   * We use the kernelStatus to check to see if the kernel is currently
+   * idle. If the kernel is idle, then we can send over a completion_request
+   * to the kernel.
+   */
   kernelStatus: string;
   onChange?: (value: string, change: EditorChangeLinkedList) => void;
   onFocusChange?: (focused: boolean) => void;
@@ -77,7 +78,7 @@ interface CodeCompletionEvent {
   debounce: boolean;
 }
 
-export default class CodeMirrorEditor extends React.PureComponent<
+export default class CodeMirrorEditor extends React.Component<
   CodeMirrorEditorProps,
   CodeMirrorEditorState
 > {
@@ -186,13 +187,6 @@ export default class CodeMirrorEditor extends React.PureComponent<
     return this.props.mode;
   }
 
-  componentWillMount(): void {
-    this.componentWillReceiveProps = debounce(
-      this.componentWillReceiveProps,
-      0
-    );
-  }
-
   componentDidMount(): void {
     require("codemirror/addon/hint/show-hint");
     require("codemirror/addon/hint/anyword-hint");
@@ -205,6 +199,7 @@ export default class CodeMirrorEditor extends React.PureComponent<
     require("codemirror/mode/python/python");
     require("codemirror/mode/ruby/ruby");
     require("codemirror/mode/javascript/javascript");
+    require("codemirror/mode/elm/elm");
     require("codemirror/mode/css/css");
     require("codemirror/mode/julia/julia");
     require("codemirror/mode/r/r");
@@ -308,6 +303,20 @@ export default class CodeMirrorEditor extends React.PureComponent<
     );
   }
 
+  /**
+   * Only update the component if certain values change to avoid
+   * re-renders triggered by the `Editor` parent component in the
+   * @nteract/stateful-components package.
+   */
+  shouldComponentUpdate(nextProps: CodeMirrorEditorProps): boolean {
+    const valueChanged = this.props.value !== nextProps.value;
+    const editorFocusedChanged =
+      this.props.editorFocused !== nextProps.editorFocused;
+    const cursorBlinkRateChanged =
+      this.props.cursorBlinkRate !== nextProps.cursorBlinkRate;
+    return valueChanged || editorFocusedChanged || cursorBlinkRateChanged;
+  }
+
   componentDidUpdate(prevProps: CodeMirrorEditorProps): void {
     if (!this.cm) {
       return;
@@ -337,30 +346,28 @@ export default class CodeMirrorEditor extends React.PureComponent<
     if (prevProps.mode !== this.props.mode) {
       this.cm.setOption("mode", this.cleanMode());
     }
-  }
 
-  componentWillReceiveProps(nextProps: CodeMirrorEditorProps): void {
     if (
       this.cm &&
-      nextProps.value !== undefined &&
+      this.props.value !== undefined &&
       normalizeLineEndings(this.cm.getValue()) !==
-        normalizeLineEndings(nextProps.value)
+        normalizeLineEndings(this.props.value)
     ) {
       if (this.props.preserveScrollPosition) {
         const prevScrollPosition = this.cm.getScrollInfo();
-        this.cm.setValue(nextProps.value);
+        this.cm.setValue(this.props.value);
         this.cm.scrollTo(prevScrollPosition.left, prevScrollPosition.top);
       } else {
-        this.cm.setValue(nextProps.value);
+        this.cm.setValue(this.props.value);
       }
     }
 
-    for (const optionName in nextProps) {
+    for (const optionName in this.props) {
       if (!isConfigurable(optionName)) {
         continue;
       }
-      if (nextProps[optionName] !== this.props[optionName]) {
-        this.cm.setOption(optionName, nextProps[optionName]);
+      if (this.props[optionName] !== this.props[optionName]) {
+        this.cm.setOption(optionName, this.props[optionName]);
       }
     }
   }
@@ -442,9 +449,14 @@ export default class CodeMirrorEditor extends React.PureComponent<
   }
 
   executeTab(editor: Editor & Doc): void {
-    editor.somethingSelected()
-      ? editor.execCommand("indentMore")
-      : editor.execCommand("insertSoftTab");
+    const { line, ch } = editor.getCursor();
+    if (editor.somethingSelected()) {
+      editor.execCommand("indentMore");
+    } else if (line && ch !== 0) {
+      editor.execCommand("autocomplete");
+    } else {
+      editor.execCommand("insertSoftTab");
+    }
   }
 
   codemirrorValueChanged(doc: Editor, change: EditorChangeLinkedList): void {

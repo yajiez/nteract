@@ -139,11 +139,6 @@ module.exports = {
       private: false
     },
     {
-      name: "@nteract/data-explorer",
-      version: "5.0.0-alpha.0",
-      private: false
-    },
-    {
       name: "@nteract/transform-geojson",
       version: "4.0.0-alpha.0",
       private: false
@@ -180,6 +175,21 @@ module.exports = {
     },
     {
       name: "@nteract/stateful-components",
+      version: "1.0.0",
+      private: false
+    },
+    {
+      name: "@nteract/mythic-notifications",
+      version: "0.1.0",
+      private: false
+    },
+    {
+      name: "@nteract/myths",
+      version: "0.1.0",
+      private: false
+    },
+    {
+      name: "@nteract/web",
       version: "1.0.0",
       private: false
     }

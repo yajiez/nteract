@@ -1,6 +1,6 @@
 {
   "name": "@nteract/mathjax",
-  "version": "4.0.1",
+  "version": "4.0.5",
   "description": "React components for MathJax",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -14,5 +14,8 @@
     "mathjax"
   ],
   "author": "Kyle Kelley <rgbkrk@gmail.com>",
-  "license": "BSD-3-Clause"
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "load-script": "^1.0.0"
+  }
 }

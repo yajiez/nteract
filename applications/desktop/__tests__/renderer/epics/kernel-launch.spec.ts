@@ -37,6 +37,7 @@ describe("launchKernelEpic", () => {
       {
         error: true,
         payload: {
+          contentRef: undefined,
           error: new Error("launchKernel needs a kernelSpec and a kernelRef"),
           kernelRef: "1234"
         },
@@ -45,6 +46,7 @@ describe("launchKernelEpic", () => {
       {
         error: true,
         payload: {
+          contentRef: undefined,
           error: new Error("launchKernel needs a kernelSpec and a kernelRef"),
           kernelRef: undefined
         },
@@ -76,13 +78,6 @@ describe("launchKernelEpic", () => {
       .toPromise();
 
     expect(responses[0]).toEqual(
-      actionsModule.setKernelspecInfo({
-        kernelInfo: { spec: "hokey", name: "woohoo" },
-        contentRef: "abc"
-      })
-    );
-
-    expect(responses[1]).toEqual(
       actionsModule.launchKernelSuccessful({
         kernel: {
           info: null,
@@ -102,7 +97,7 @@ describe("launchKernelEpic", () => {
       })
     );
 
-    expect(responses[2]).toEqual(
+    expect(responses[1]).toEqual(
       actionsModule.setExecutionState({
         kernelStatus: "launched",
         kernelRef: "123"

@@ -1,21 +1,23 @@
-import Immutable from "immutable";
 import React from "react";
 import { connect } from "react-redux";
 import { Dispatch } from "redux";
 
+import { ImmutableCell } from "@nteract/commutable";
 import { actions, AppState, ContentRef } from "@nteract/core";
 import { Source } from "@nteract/presentational-components";
 
-import Editor from "../inputs/editor";
+import Editor, { PassedEditorProps, EditorSlots } from "../inputs/editor";
+import CodeMirrorEditor from "../inputs/connected-editors/codemirror";
 
 interface NamedRawCellSlots {
-  editor?: React.ReactChild;
+  editor?: EditorSlots;
+  toolbar?: () => JSX.Element;
 }
 
 interface ComponentProps {
   id: string;
   contentRef: ContentRef;
-  cell: Immutable.Map<string, any>;
+  cell?: ImmutableCell;
   cell_type: "raw";
   children?: NamedRawCellSlots;
 }
@@ -31,21 +33,26 @@ export class PureRawCell extends React.Component<
   render() {
     const { id, contentRef, children } = this.props;
 
-    let editor;
-    if (children) {
-      editor = children.editor;
-    }
+    const defaults = {
+      editor: {
+        codemirror: (props: PassedEditorProps) => (
+          <CodeMirrorEditor {...props} editorType={"codemirror"} />
+        )
+      }
+    };
+
+    const editor = children?.editor || defaults.editor;
+    const toolbar = children?.toolbar;
 
     return (
-      <Source className="nteract-cell-source">
-        <Editor id={id} contentRef={contentRef} className="nteract-cell-editor">
-          {editor ? (
-            <React.Fragment>{editor}</React.Fragment>
-          ) : (
-            <CodeMirrorEditor />
-          )}
-        </Editor>
-      </Source>
+      <div className="nteract-raw-cell nteract-cell">
+        {toolbar && toolbar()}
+        <Source className="nteract-cell-source">
+          <Editor id={id} contentRef={contentRef}>
+            {editor}
+          </Editor>
+        </Source>
+      </div>
     );
   }
 }
@@ -76,9 +83,5 @@ const RawCell = connect<void, DispatchProps, ComponentProps, AppState>(
   null,
   makeMapDispatchToProps
 )(PureRawCell);
-
-RawCell.defaultProps = {
-  cell_type: "raw"
-};
 
 export default RawCell;

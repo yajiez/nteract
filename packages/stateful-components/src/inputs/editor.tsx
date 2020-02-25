@@ -2,12 +2,30 @@ import React from "react";
 import { connect } from "react-redux";
 import { Dispatch } from "redux";
 
-import { AppState, ContentRef, actions, selectors } from "@nteract/core";
+import { actions, AppState, ContentRef, selectors } from "@nteract/core";
+
+export interface PassedEditorProps {
+  id: string;
+  contentRef: ContentRef;
+  editorType: string;
+  editorFocused: boolean;
+  value: string;
+  channels: any;
+  kernelStatus: string;
+  theme: string;
+  onChange: (text: string) => void;
+  onFocusChange: (focused: boolean) => void;
+  className: string;
+}
+
+export interface EditorSlots {
+  [key: string]: (props: PassedEditorProps) => React.ReactNode;
+}
 
 interface ComponentProps {
   id: string;
   contentRef: ContentRef;
-  children: React.ReactNode;
+  children: EditorSlots;
 }
 
 interface StateProps {
@@ -16,47 +34,38 @@ interface StateProps {
   value: string;
   channels: any;
   kernelStatus: string;
+  theme: string;
 }
 
-export class Editor extends React.Component<ComponentProps & StateProps> {
-  render() {
-    const { editorType } = this.props;
+interface DispatchProps {
+  onChange: (text: string) => void;
+  onFocusChange: (focused: boolean) => void;
+}
 
-    let chosenOne: React.ReactChild | null = null;
+type Props = ComponentProps & StateProps & DispatchProps;
 
-    // Find the first child element that matches something in this.props.data
-    React.Children.forEach(this.props.children, child => {
-      if (typeof child === "string" || typeof child === "number") {
-        return;
-      }
+export class Editor extends React.PureComponent<Props> {
+  render(): React.ReactNode {
+    const { editorType, children } = this.props;
 
-      const childElement = child;
-      if (chosenOne) {
-        // Already have a selection
-        return;
-      }
-      if (childElement.props && childElement.props.editorType) {
-        const child_editor_type = childElement.props.editorType;
+    const chosenEditor = children ? children[editorType] : undefined;
 
-        chosenOne = child_editor_type === editorType ? childElement : null;
-        return;
-      }
-    });
-
-    // If we didn't find a match, render nothing
-    if (chosenOne === null) {
-      return null;
+    if (chosenEditor) {
+      return chosenEditor({
+        id: this.props.id,
+        contentRef: this.props.contentRef,
+        editorType: this.props.editorType,
+        value: this.props.value,
+        editorFocused: this.props.editorFocused,
+        channels: this.props.channels,
+        kernelStatus: this.props.kernelStatus,
+        theme: this.props.theme,
+        onChange: this.props.onChange,
+        onFocusChange: this.props.onFocusChange,
+        className: "nteract-cell-editor"
+      });
     }
-
-    // Render the output component that handles this output type
-    return React.cloneElement(chosenOne, {
-      editorFocused: this.props.editorFocused,
-      value: this.props.value,
-      channels: this.props.channels,
-      kernelStatus: this.props.kernelStatus,
-      editorType: this.props.editorType,
-      className: "nteract-cell-editor"
-    });
+    return null;
   }
 }
 
@@ -72,7 +81,8 @@ export const makeMapStateToProps = (
     let channels = null;
     let kernelStatus = "not connected";
     let value = "";
-    let editorType = "codemirror";
+    const editorType = selectors.editorType(state);
+    const theme = selectors.userTheme(state);
 
     if (model && model.type === "notebook") {
       const cell = selectors.notebook.cellById(model, { id });
@@ -94,7 +104,8 @@ export const makeMapStateToProps = (
       value,
       channels,
       kernelStatus,
-      editorType
+      editorType,
+      theme
     };
   };
 

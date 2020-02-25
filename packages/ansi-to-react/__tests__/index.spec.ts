@@ -5,6 +5,7 @@ import Ansi from "../src/index";
 
 const GREEN_FG = "\u001b[32m";
 const YELLOW_BG = "\u001b[43m";
+const BOLD = "\u001b[1m";
 const RESET = "\u001b[0;m";
 
 describe("Ansi", () => {
@@ -116,7 +117,7 @@ describe("Ansi", () => {
       expect(el).not.toBeNull();
       expect(el.text()).toBe("hello world");
       expect(el.html()).toBe(
-        "<code><span>hello </span><span class=\"ansi-green\">world</span></code>"
+        "<code><span>hello </span><span class=\"ansi-green-fg\">world</span></code>"
       );
     });
 
@@ -131,7 +132,7 @@ describe("Ansi", () => {
       expect(el).not.toBeNull();
       expect(el.text()).toBe("hello world");
       expect(el.html()).toBe(
-        "<code><span>hello </span><span class=\"ansi-yellow\">world</span></code>"
+        "<code><span>hello </span><span class=\"ansi-yellow-bg\">world</span></code>"
       );
     });
 
@@ -146,7 +147,22 @@ describe("Ansi", () => {
       expect(el).not.toBeNull();
       expect(el.text()).toBe("hello world");
       expect(el.html()).toBe(
-        "<code><span>hello </span><span class=\"ansi-yellow ansi-green\">world</span></code>"
+        "<code><span>hello </span><span class=\"ansi-yellow-bg ansi-green-fg\">world</span></code>"
+      );
+    });
+
+    test("can add text decoration classes", () => {
+      const el = shallow(
+        React.createElement(
+          Ansi,
+          { useClasses: true },
+          `hello ${GREEN_FG}${BOLD}world${RESET}!`,
+        )
+      );
+      expect(el).not.toBeNull();
+      expect(el.text()).toBe("hello world!");
+      expect(el.html()).toBe(
+        "<code><span>hello </span><span class=\"ansi-green-fg ansi-bold\">world</span><span>!</span></code>"
       );
     });
 
@@ -161,7 +177,7 @@ describe("Ansi", () => {
       expect(el).not.toBeNull();
       expect(el.text()).toBe("this is a link: https://nteract.io/");
       expect(el.html()).toBe(
-        "<code><span class=\"ansi-green\">this is a link: <a href=\"https://nteract.io/\" target=\"_blank\">https://nteract.io/</a></span></code>"
+        "<code><span class=\"ansi-green-fg\">this is a link: <a href=\"https://nteract.io/\" target=\"_blank\">https://nteract.io/</a></span></code>"
       );
     });
   });

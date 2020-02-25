@@ -21,7 +21,6 @@ import { empty, merge, Observable, of, Subscriber } from "rxjs";
 import {
   catchError,
   concatMap,
-  filter,
   first,
   map,
   mergeMap,
@@ -52,7 +51,8 @@ export function launchKernelObservable(
   kernelSpec: KernelspecInfo,
   cwd: string,
   kernelRef: KernelRef,
-  contentRef: ContentRef
+  contentRef: ContentRef,
+  state: AppState
 ): Observable<Actions> {
   const spec = kernelSpec.spec;
 
@@ -112,12 +112,17 @@ export function launchKernelObservable(
             undefined,
             jmp
           );
-          observer.next(
-            actions.setKernelspecInfo({
-              contentRef,
-              kernelInfo: kernelSpec
-            })
-          );
+          const kernelInfo = selectors.kernelspecByName(state, {
+            name: kernelSpec.name
+          });
+          if (kernelInfo) {
+            observer.next(
+              actions.setKernelMetadata({
+                contentRef,
+                kernelInfo
+              })
+            );
+          }
 
           const kernel: LocalKernelProps = {
             info: null,
@@ -180,7 +185,7 @@ export const launchKernelByNameEpic = (
     mergeMap((action: actions.LaunchKernelByNameAction) =>
       kernelSpecsObservable.pipe(
         map(specs => {
-          const kernelSpec = specs[action.payload.kernelSpecName];
+          const kernelSpec = specs[action.payload.kernelSpecName!];
           if (kernelSpec) {
             // Defer to a launchKernel action to _actually_ launch
             return actions.launchKernel({
@@ -257,7 +262,8 @@ export const launchKernelEpic = (
           action.payload.kernelSpec,
           action.payload.cwd,
           action.payload.kernelRef,
-          action.payload.contentRef
+          action.payload.contentRef,
+          state$.value
         ),
         // Was there a kernel before (?) -- kill it if so, otherwise nothing else
         cleanupOldKernel$
@@ -292,10 +298,6 @@ export const interruptKernelEpic = (
 ): Observable<InterruptActions> =>
   action$.pipe(
     ofType(actions.INTERRUPT_KERNEL),
-    // This epic can only interrupt direct zeromq connected kernels
-    filter(() => selectors.isCurrentKernelZeroMQ(state$.value)),
-    // If the user fires off _more_ interrupts, we shouldn't interrupt the in-flight
-    // interrupt, instead doing it after the last one happens
     concatMap(
       (action: actions.InterruptKernel): Observable<InterruptActions> => {
         const { contentRef } = action.payload;
@@ -339,7 +341,8 @@ export const interruptKernelEpic = (
 
         return of(
           actions.interruptKernelSuccessful({
-            kernelRef: action.payload.kernelRef
+            kernelRef: action.payload.kernelRef,
+            contentRef
           })
         );
       }

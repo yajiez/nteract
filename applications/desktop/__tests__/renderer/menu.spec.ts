@@ -1,9 +1,12 @@
 jest.mock("fs");
-import { actions } from "@nteract/core";
-import { ipcRenderer as ipc, webFrame } from "electron";
+import { actions, makeAppRecord, selectors } from "@nteract/core";
+import { sendNotification } from "@nteract/mythic-notifications";
+import { ipcRenderer as ipc, remote, webFrame } from "electron";
 import * as Immutable from "immutable";
 
 import * as menu from "../../src/notebook/menu";
+
+import { mockAppState } from "@nteract/fixtures";
 
 describe("dispatchCreateCellAbove", () => {
   test("dispatches a CREATE_CELL_ABOVE with code action", () => {
@@ -76,65 +79,6 @@ describe("dispatchCreateRawCellBelow", () => {
     expect(store.dispatch).toHaveBeenCalledWith(
       actions.createCellBelow({
         cellType: "raw",
-        source: "",
-        contentRef: "123"
-      })
-    );
-  });
-});
-
-describe("dispatchCreateCellBefore", () => {
-  test("WARNING: DEPRECATED. Use createCellAbove() instead. dispatches a CREATE_CELL_BEFORE with code action", () => {
-    const store = {
-      dispatch: jest.fn()
-    };
-    const props = {
-      contentRef: "123"
-    };
-
-    menu.dispatchCreateCellBefore(props, store);
-    expect(store.dispatch).toHaveBeenCalledWith(
-      actions.createCellBefore({
-        cellType: "code",
-        contentRef: props.contentRef
-      })
-    );
-  });
-});
-
-describe("dispatchCreateCellAfter", () => {
-  test("WARNING: DEPRECATED. Use createCellBelow() instead. dispatches a CREATE_CELL_AFTER with code action", () => {
-    const store = {
-      dispatch: jest.fn()
-    };
-    const props = {
-      contentRef: "123"
-    };
-
-    menu.dispatchCreateCellAfter(props, store);
-    expect(store.dispatch).toHaveBeenCalledWith(
-      actions.createCellAfter({
-        cellType: "code",
-        source: "",
-        contentRef: props.contentRef
-      })
-    );
-  });
-});
-
-describe("dispatchCreateTextCellAfter", () => {
-  test("WARNING:DEPRECATED. dispatches a CREATE_CELL_AFTER with markdown action", () => {
-    const store = {
-      dispatch: jest.fn()
-    };
-    const props = {
-      contentRef: "123"
-    };
-
-    menu.dispatchCreateTextCellAfter(props, store);
-    expect(store.dispatch).toHaveBeenCalledWith(
-      actions.createCellAfter({
-        cellType: "markdown",
         source: "",
         contentRef: "123"
       })
@@ -379,11 +323,10 @@ describe("dispatchRestartKernel", () => {
 
 describe("dispatchInterruptKernel", () => {
   test("dispatches INTERRUPT_KERNEL actions", () => {
-    const notificationSystem = { addNotification: jest.fn() };
     const store = {
       dispatch: jest.fn(),
       getState: () => ({
-        app: Immutable.Map({ notificationSystem }),
+        app: Immutable.Map({}),
         core: {
           entities: {
             contents: {
@@ -420,8 +363,6 @@ describe("dispatchInterruptKernel", () => {
           contentRef: "123"
         }
       });
-    } else {
-      expect(notificationSystem.addNotification).toHaveBeenCalled();
     }
   });
 });
@@ -811,20 +752,28 @@ describe("triggerWindowRefresh", () => {
 });
 
 describe("exportPDF", () => {
-  test.skip("it notifies a user upon successful write", () => {
+  test("it notifies a user upon successful write", () => {
+    const state = mockAppState({});
+    const contentRef: string = state.core.entities.contents.byRef
+      .keySeq()
+      .first();
     const store = {
-      dispatch: jest.fn()
+      dispatch: jest.fn(),
+      getState: jest.fn(() => state),
     };
-    const notificationSystem = { addNotification: jest.fn() };
     const filepath = "thisisafilename.ipynb";
-    menu.exportPDF(store, filepath, notificationSystem);
-    expect(notificationSystem.addNotification).toHaveBeenCalledWith({
-      title: "PDF exported",
-      message: `Notebook ${filepath} has been exported as a pdf.`,
-      dismissible: true,
-      position: "tr",
-      level: "success"
-    });
+    menu.exportPDF({ contentRef }, store, filepath);
+    expect(store.dispatch).toHaveBeenCalledWith(
+      sendNotification.create({
+        title: "PDF exported",
+        message: expect.anything(),
+        level: "success",
+        action: {
+          label: "Open",
+          callback: expect.any(Function),
+        },
+      }),
+    );
   });
 });
 
@@ -833,8 +782,6 @@ describe("storeToPDF", () => {
     const props = {
       contentRef: "123"
     };
-
-    const notificationSystem = { addNotification: jest.fn() };
 
     const store = {
       dispatch: jest.fn(),
@@ -850,22 +797,144 @@ describe("storeToPDF", () => {
             }
           }
         },
-        app: Immutable.Map({
-          notificationSystem
-        })
       })
     };
 
     menu.storeToPDF(props, store);
-    expect(notificationSystem.addNotification).toHaveBeenCalledWith({
-      action: { callback: expect.any(Function), label: "Save As" },
-      title: "File has not been saved!",
-      message: expect.stringContaining(
-        "Click the button below to save the notebook"
-      ),
-      dismissible: true,
-      position: "tr",
-      level: "warning"
+    expect(store.dispatch).toHaveBeenCalledWith(
+      sendNotification.create({
+        action: { callback: expect.any(Function), label: "Save As" },
+        title: "File has not been saved!",
+        message: expect.stringContaining(
+          "Click the button below to save the notebook"
+        ),
+        level: "warning"
+      }),
+    );
+  });
+});
+
+describe("dispatchInterruptKernel", () => {
+  test("dispatches an INTERRUPT_KERNEL action", () => {
+    const state = mockAppState({});
+    const contentRef: string = state.core.entities.contents.byRef
+      .keySeq()
+      .first();
+    const kernelRef = selectors.kernelRefByContentRef(state, { contentRef });
+    const store = {
+      dispatch: jest.fn(),
+      getState: jest.fn(() => state)
+    };
+    const props = {
+      contentRef
+    };
+
+    menu.dispatchInterruptKernel(props, store);
+    expect(store.dispatch).toHaveBeenCalledWith(
+      actions.interruptKernel({
+        contentRef,
+        kernelRef
+      })
+    );
+  });
+});
+
+describe("exportPDF", () => {
+  it("throws an error if provided value is not a notebook", () => {
+    const store = {
+      dispatch: jest.fn(),
+      getState: () => ({
+        core: {
+          entities: {
+            contents: {
+              byRef: Immutable.Map({
+                "123": {
+                  filepath: null
+                }
+              })
+            }
+          }
+        },
+        app: Immutable.Map({
+        })
+      })
+    };
+
+    const invocation = () =>
+      menu.exportPDF(
+        { contentRef: "abc" },
+        store,
+        "my-notebook.pdf",
+      );
+    expect(invocation).toThrow();
+  });
+  it("unhides hidden cells before exporting to PDF", () => {
+    const state = mockAppState({ hideAll: true });
+    const contentRef: string = state.core.entities.contents.byRef
+      .keySeq()
+      .first();
+    const store = {
+      dispatch: jest.fn(),
+      getState: jest.fn(() => state)
+    };
+    const props = { contentRef };
+
+    menu.exportPDF(props, store, "my-notebook");
+    expect(store.dispatch).toBeCalledWith({
+      type: actions.TOGGLE_OUTPUT_EXPANSION,
+      payload: {
+        id: expect.any(String),
+        contentRef
+      }
     });
+  });
+});
+
+describe("dispatchSetConfigAtKey", () => {
+  test("dispatches a setConfigAtKey action", () => {
+    const store = {
+      dispatch: jest.fn()
+    };
+    const props = {
+      contentRef: "123"
+    };
+    const key = "key";
+    const value = "value";
+    menu.dispatchSetConfigAtKey(
+      props,
+      store,
+      key,
+      new Event("testEvet"),
+      value
+    );
+    expect(store.dispatch).toHaveBeenCalledWith(
+      actions.setConfigAtKey(key, value)
+    );
+  });
+});
+
+describe("showSaveAsDialog", () => {
+  it("shows the saveAs dialog", () => {
+    menu.showSaveAsDialog().then(filepath => {
+      expect(remote.dialog.showSaveAsDialog).toBeCalled();
+    });
+  });
+});
+
+describe("promptUserAboutNewKernel", () => {
+  it("shows a message box for restarting a new kernel", () => {
+    const state = mockAppState({});
+    const contentRef: string = state.core.entities.contents.byRef
+      .keySeq()
+      .first();
+    const store = {
+      dispatch: jest.fn(),
+      getState: jest.fn(() => state)
+    };
+    menu
+      .promptUserAboutNewKernel({ contentRef }, store, "file.ipynb")
+      .then(filepath => {
+        expect(remote.dialog.showMessageBox).toBeCalled();
+      });
   });
 });

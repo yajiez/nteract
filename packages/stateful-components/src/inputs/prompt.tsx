@@ -1,12 +1,19 @@
 import React from "react";
 import { connect } from "react-redux";
 
-import { ContentRef, AppState, selectors } from "@nteract/core";
+import { AppState, ContentRef, selectors } from "@nteract/core";
+
+export interface PassedPromptProps {
+  id: string;
+  contentRef: ContentRef;
+  status?: string;
+  executionCount?: number;
+}
 
 interface ComponentProps {
   id: string;
   contentRef: ContentRef;
-  children: React.ReactNode;
+  children: (props: PassedPromptProps) => React.ReactNode;
 }
 
 interface StateProps {
@@ -14,12 +21,18 @@ interface StateProps {
   executionCount?: number;
 }
 
-export class Prompt extends React.Component<ComponentProps, StateProps> {
+type Props = StateProps & ComponentProps;
+
+export class Prompt extends React.Component<Props> {
   render() {
-    const { children } = this.props;
     return (
       <div className="nteract-cell-prompt">
-        {React.cloneElement(children, this.props)}
+        {this.props.children({
+          id: this.props.id,
+          contentRef: this.props.contentRef,
+          status: this.props.status,
+          executionCount: this.props.executionCount
+        })}
       </div>
     );
   }
@@ -36,7 +49,7 @@ const makeMapStateToProps = (
     let status;
     let executionCount;
 
-    if (model && model.type == "notebook") {
+    if (model && model.type === "notebook") {
       status = model.transient.getIn(["cellMap", id, "status"]);
       const cell = selectors.notebook.cellById(model, { id });
       if (cell) {

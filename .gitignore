@@ -37,6 +37,7 @@ dist/
 test/*.ipynb
 
 applications/desktop/bin/nteract-env
+applications/jupyter-extension/pip-wheel-metadata/*
 
 # Ignore lerna lock
 packages/*/yarn.lock
@@ -63,3 +64,6 @@ applications/desktop/*.ipynb
 
 # Don't commit the built monorepo docs
 site/
+
+# Ignore pip install data for the Jupyter extensions
+applications/jupyter-extension/pip-wheel-metadata/

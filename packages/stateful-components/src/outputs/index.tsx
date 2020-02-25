@@ -2,12 +2,13 @@ import Immutable from "immutable";
 import React from "react";
 import { connect } from "react-redux";
 
-import { selectors, AppState, ContentRef } from "@nteract/core";
+import { AppState, ContentRef, selectors } from "@nteract/core";
 import { Output } from "@nteract/outputs";
 
 interface ComponentProps {
   id: string;
   contentRef: ContentRef;
+  children: React.ReactNode;
 }
 
 interface StateProps {
@@ -21,11 +22,12 @@ export class Outputs extends React.PureComponent<ComponentProps & StateProps> {
     const { outputs, children, hidden, expanded } = this.props;
     return (
       <div
-        className={`nteract-cell-outputs ${hidden && "hidden"} ${expanded &&
-          "expanded"}`}
+        className={`nteract-cell-outputs ${hidden ? "hidden" : ""} ${
+          expanded ? "expanded" : ""
+        }`}
       >
         {outputs.map((output, index) => (
-          <Output output={output} index={index}>
+          <Output output={output} key={index}>
             {children}
           </Output>
         ))}
@@ -46,15 +48,17 @@ export const makeMapStateToProps = (
     const { contentRef, id } = ownProps;
     const model = selectors.model(state, { contentRef });
 
-    if (model && model.type == "notebook") {
+    if (model && model.type === "notebook") {
       const cell = selectors.notebook.cellById(model, { id });
       if (cell) {
         outputs = cell.get("outputs", Immutable.List());
         hidden =
-          cell.cell_type === "code" && cell.getIn(["metadata", "outputHidden"]);
+          cell.cell_type === "code" &&
+          cell.getIn(["metadata", "jupyter", "outputs_hidden"]);
         expanded =
           cell.cell_type === "code" &&
-          cell.getIn(["metadata", "outputExpanded"]);
+          (cell.getIn(["metadata", "outputExpanded"]) ||
+            !cell.getIn(["metadata", "collapsed"]));
       }
     }
 
@@ -63,4 +67,6 @@ export const makeMapStateToProps = (
   return mapStateToProps;
 };
 
-export default connect(makeMapStateToProps, null)(Outputs);
+export default connect<StateProps, void, ComponentProps, AppState>(
+  makeMapStateToProps
+)(Outputs);

@@ -8,7 +8,7 @@ import {
   ImmutableExecuteResult,
   JSONObject
 } from "@nteract/commutable";
-import { actions, selectors, AppState, ContentRef } from "@nteract/core";
+import { actions, AppState, ContentRef, selectors } from "@nteract/core";
 
 import memoizeOne from "memoize-one";
 
@@ -16,8 +16,8 @@ interface ComponentProps {
   output_type: string;
   id: string;
   contentRef: ContentRef;
-  index: number;
-  output: any;
+  index?: number;
+  output?: ImmutableDisplayData | ImmutableExecuteResult;
 }
 
 interface StateProps {
@@ -84,7 +84,7 @@ export const richestMediaType = (
   return mediaType;
 };
 
-const makeMapStateToProps = (
+export const makeMapStateToProps = (
   initialState: AppState,
   ownProps: ComponentProps
 ) => {
@@ -150,7 +150,7 @@ const makeMapDispatchToProps = (
               id,
               contentRef,
               metadata,
-              index,
+              index: index || 0,
               mediaType
             })
           );
@@ -161,7 +161,12 @@ const makeMapDispatchToProps = (
   return mapDispatchToProps;
 };
 
-const TransformMedia = connect(
+const TransformMedia = connect<
+  StateProps,
+  DispatchProps,
+  ComponentProps,
+  AppState
+>(
   makeMapStateToProps,
   makeMapDispatchToProps
 )(PureTransformMedia);

@@ -6,8 +6,10 @@ import {
   JupyterMessage,
   ofMessageType
 } from "@nteract/messaging";
+import { sendNotification } from "@nteract/mythic-notifications";
+import { AnyAction } from "redux";
 import { ActionsObservable, ofType, StateObservable } from "redux-observable";
-import { empty, merge, Observable, Observer, of } from "rxjs";
+import { EMPTY, merge, Observable, Observer, of } from "rxjs";
 import {
   catchError,
   concatMap,
@@ -23,7 +25,7 @@ import {
 
 import * as actions from "@nteract/actions";
 import * as selectors from "@nteract/selectors";
-import { ContentRef, KernelRef, AppState, KernelInfo } from "@nteract/types";
+import { AppState, ContentRef, KernelInfo, KernelRef } from "@nteract/types";
 import { createKernelRef } from "@nteract/types";
 
 const path = require("path");
@@ -103,7 +105,7 @@ export function acquireKernelInfo(
         nbconvertExporter: l.nbconvert_exporter
       };
 
-      let result;
+      let result: AnyAction[];
       if (!c.protocol_version.startsWith("5")) {
         result = [
           actions.launchKernelFailed({
@@ -115,8 +117,6 @@ export function acquireKernelInfo(
           })
         ];
       } else {
-        const kernelspec = selectors.kernelspecByName(state, { name: l.name });
-        const kernelInfo = { name: l.name, spec: kernelspec };
         result = [
           // The original action we were using
           actions.setLanguageInfo({
@@ -127,12 +127,18 @@ export function acquireKernelInfo(
           actions.setKernelInfo({
             kernelRef,
             info
-          }),
-          actions.setKernelspecInfo({
-            contentRef,
-            kernelInfo
           })
         ];
+
+        const kernelspec = selectors.kernelspecByName(state, { name: l.name });
+        if (kernelspec) {
+          result.push(
+            actions.setKernelMetadata({
+              contentRef,
+              kernelInfo: kernelspec
+            })
+          );
+        }
       }
 
       return of(...result);
@@ -212,9 +218,21 @@ export const launchKernelWhenNotebookSetEpic = (
         content.model.type !== "notebook"
       ) {
         // This epic only handles notebook content
-        return empty();
+        return EMPTY;
       }
 
+      /**
+       * Avoid relaunching kernels for notebooks that have already
+       * launched their content.
+       */
+      if (content.model.kernelRef) {
+        const kernel = selectors.kernel(state, {
+          kernelRef: content.model.kernelRef
+        });
+        if (kernel && kernel.channels) {
+          return EMPTY;
+        }
+      }
       const filepath = content.filepath;
       const notebook = content.model.notebook;
 
@@ -250,51 +268,38 @@ export const restartKernelEpic = (
         contentRef: action.payload.contentRef
       });
 
-      const notificationSystem = selectors.notificationSystem(state);
-
       if (!oldKernelRef) {
-        notificationSystem.addNotification({
-          title: "Failure to Restart",
-          message: "Unable to restart kernel, please select a new kernel.",
-          dismissible: true,
-          position: "tr",
-          level: "error"
-        });
-        return empty();
+        return of(
+          sendNotification.create({
+            title: "Failure to Restart",
+            message: "Unable to restart kernel, please select a new kernel.",
+            level: "error"
+          })
+        );
       }
 
       const oldKernel = selectors.kernel(state, { kernelRef: oldKernelRef });
 
       if (oldKernel && oldKernel.type === "websocket") {
-        return empty();
+        return EMPTY;
       }
 
       if (!oldKernelRef || !oldKernel) {
-        notificationSystem.addNotification({
-          title: "Failure to Restart",
-          message: "Unable to restart kernel, please select a new kernel.",
-          dismissible: true,
-          position: "tr",
-          level: "error"
-        });
-
-        // TODO: Wow do we need to send notifications through our store for
-        // consistency
-        return empty();
+        return of(
+          sendNotification.create({
+            title: "Failure to Restart",
+            message: "Unable to restart kernel, please select a new kernel.",
+            level: "error"
+          })
+        );
       }
 
       const newKernelRef = kernelRefGenerator();
       const initiatingContentRef = action.payload.contentRef;
-
-      // TODO: Incorporate this into each of the launchKernelByName
-      //       actions...
-      //       This only mirrors the old behavior of restart kernel (for now)
-      notificationSystem.addNotification({
+      const successNotification = sendNotification.create({
         title: "Kernel Restarting...",
         message: `Kernel ${oldKernel.kernelSpecName ||
           "unknown"} is restarting.`,
-        dismissible: true,
-        position: "tr",
         level: "success"
       });
 
@@ -304,7 +309,7 @@ export const restartKernelEpic = (
       });
 
       const relaunch = actions.launchKernelByName({
-        kernelSpecName: oldKernel.kernelSpecName,
+        kernelSpecName: oldKernel.kernelSpecName ?? undefined,
         cwd: oldKernel.cwd,
         kernelRef: newKernelRef,
         selectNextKernel: true,
@@ -348,6 +353,6 @@ export const restartKernelEpic = (
         })
       );
 
-      return merge(of(kill, relaunch), awaitKernelReady);
+      return merge(of(kill, relaunch, successNotification), awaitKernelReady);
     })
   );

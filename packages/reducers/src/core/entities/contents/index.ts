@@ -26,7 +26,7 @@ import { Action } from "redux";
 import { file } from "./file";
 import { notebook } from "./notebook";
 
-const byRef = (
+export const byRef = (
   state: Map<ContentRef, ContentRecord>,
   action: Action
 ): Map<ContentRef, ContentRecord> => {
@@ -116,8 +116,6 @@ const byRef = (
           fetchContentFailedAction.payload.error
         );
     case actionTypes.LAUNCH_KERNEL_SUCCESSFUL:
-      // TODO: is this reasonable? We launched the kernel on behalf of this
-      // content... so it makes sense to swap it, right?
       const launchKernelAction = action as actionTypes.NewKernelAction;
       return state.setIn(
         [launchKernelAction.payload.contentRef, "model", "kernelRef"],
@@ -233,7 +231,8 @@ const byRef = (
                   keyPathsForDisplays: Map(),
                   cellMap: Map()
                 }),
-                cellFocused: immutableNotebook.getIn(["cellOrder", 0])
+                cellFocused: immutableNotebook.getIn(["cellOrder", 0]),
+                kernelRef: fetchContentFulfilledAction.payload.kernelRef
               }),
               loading: false,
               saving: false,
@@ -303,18 +302,15 @@ const byRef = (
     case actionTypes.MARK_CELL_AS_DELETING:
     case actionTypes.UNMARK_CELL_AS_DELETING:
     case actionTypes.DELETE_CELL:
-    case actionTypes.REMOVE_CELL: // DEPRECATION WARNING: This action type is being deprecated. Please use DELETE_CELL instead
     case actionTypes.CREATE_CELL_BELOW:
     case actionTypes.CREATE_CELL_ABOVE:
-    case actionTypes.CREATE_CELL_AFTER: // DEPRECATION WARNING: This action type is being deprecated. Please use CREATE_CELL_BELOW instead
-    case actionTypes.CREATE_CELL_BEFORE: // DEPRECATION WARNING: This action type is being deprecated. Please use CREATE_CELL_ABOVE instead
     case actionTypes.CREATE_CELL_APPEND:
     case actionTypes.TOGGLE_CELL_OUTPUT_VISIBILITY:
     case actionTypes.TOGGLE_CELL_INPUT_VISIBILITY:
     case actionTypes.ACCEPT_PAYLOAD_MESSAGE:
     case actionTypes.UPDATE_CELL_STATUS:
     case actionTypes.SET_LANGUAGE_INFO:
-    case actionTypes.SET_KERNELSPEC_INFO:
+    case actionTypes.SET_KERNEL_METADATA:
     case actionTypes.OVERWRITE_METADATA_FIELD:
     case actionTypes.DELETE_METADATA_FIELD:
     case actionTypes.COPY_CELL:
@@ -325,6 +321,7 @@ const byRef = (
     case actionTypes.TOGGLE_TAG_IN_CELL:
     case actionTypes.UPDATE_OUTPUT_METADATA:
     case actionTypes.PROMPT_INPUT_REQUEST:
+    case actionTypes.INTERRUPT_KERNEL_SUCCESSFUL:
     case actionTypes.UNHIDE_ALL: {
       const cellAction = action as actionTypes.FocusCell;
       const path = [cellAction.payload.contentRef, "model"];

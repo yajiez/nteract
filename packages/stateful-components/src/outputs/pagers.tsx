@@ -2,7 +2,7 @@ import Immutable from "immutable";
 import React from "react";
 import { connect } from "react-redux";
 
-import { selectors, AppState, ContentRef } from "@nteract/core";
+import { AppState, ContentRef, selectors } from "@nteract/core";
 import { RichMedia } from "@nteract/outputs";
 
 interface ComponentProps {
@@ -17,12 +17,24 @@ interface StateProps {
 
 export class Pagers extends React.PureComponent<ComponentProps & StateProps> {
   render() {
-    const { pagers, children } = this.props;
+    const { pagers } = this.props;
     return (
       <div className="nteract-cell-pagers">
         {pagers.map(pager => (
           <RichMedia data={pager.data} metadata={pager.metadata}>
-            {children}
+            {React.Children.map(this.props.children, child => {
+              if (
+                typeof child === "string" ||
+                typeof child === "number" ||
+                typeof child === "boolean"
+              ) {
+                return;
+              }
+              if (!child || typeof child !== "object" || !("props" in child)) {
+                return;
+              }
+              return React.cloneElement(child, this.props);
+            })}
           </RichMedia>
         ))}
       </div>
@@ -40,7 +52,7 @@ export const makeMapStateToProps = (
     const { contentRef, id } = ownProps;
     const model = selectors.model(state, { contentRef });
 
-    if (model && model.type == "notebook") {
+    if (model && model.type === "notebook") {
       const cell = selectors.notebook.cellById(model, { id });
       if (cell) {
         pagers = model.getIn(["cellPagers", id]) || Immutable.List();
